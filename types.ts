@@ -43,3 +43,8 @@ export interface ContractData {
   riderProfile: ProfileData;
   numberOfDays: number;
 }
+
+export interface ContractRecord extends ContractData {
+  id?: number;
+  timestamp: number;
+}

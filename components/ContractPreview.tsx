@@ -7,14 +7,13 @@ interface ContractPreviewProps {
   contractData: ContractData;
   onDownload: () => void;
   onClose: () => void;
-  contractRef: React.RefObject<HTMLDivElement>;
 }
 
 const DetailItem: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
   value ? <p><strong className="font-medium">{label}:</strong> {value}</p> : null
 );
 
-export const ContractPreview: React.FC<ContractPreviewProps> = ({ contractData, onDownload, onClose, contractRef }) => {
+export const ContractPreview: React.FC<ContractPreviewProps> = ({ contractData, onDownload, onClose }) => {
   if (!contractData) return null;
 
   return (
@@ -29,7 +28,7 @@ export const ContractPreview: React.FC<ContractPreviewProps> = ({ contractData, 
           </div>
         </div>
         
-        <div className="p-8 overflow-y-auto" id="contract-content" ref={contractRef}>
+        <div className="p-8 overflow-y-auto" id="contract-content">
           <h1 className="text-4xl font-bold text-center mb-2 text-[--on-surface]">Ride Contract</h1>
           <p className="text-center text-sm text-[--on-surface-variant] mb-8">अनुबंध की सवारी</p>
 

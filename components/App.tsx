@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Header } from './Header';
 import { FareForm } from './FareForm';
 import { ResultDisplay } from './ResultDisplay';
@@ -7,22 +7,22 @@ import { Toast } from './Toast';
 import { Profile } from './Profile';
 import { ContractForm } from './ContractForm';
 import { ContractPreview } from './ContractPreview';
+import { ContractHistoryList } from './ContractHistoryList';
 import { useTheme } from '../hooks/useTheme';
 import { useIndexedDB } from '../hooks/useIndexedDB';
 import { useToast } from '../hooks/useToast';
 import { useProfile } from '../hooks/useProfile';
 import { calculateFare } from '../services/fareCalculator';
 import { generatePdf } from '../services/pdfGenerator';
-import { FareInput, FareRecord, ProfileData, ContractData } from '../types';
+import { FareInput, FareRecord, ProfileData, ContractData, ContractRecord } from '../types';
 
 function App() {
   const [theme, toggleTheme] = useTheme();
-  const { history, saveFare, clearHistory } = useIndexedDB();
+  const { history, saveFare, clearHistory, contractHistory, saveContract, clearContracts } = useIndexedDB();
   const { toast, showToast } = useToast();
   const [calculatedFare, setCalculatedFare] = useState<number | null>(null);
   const [profile, saveProfile] = useProfile();
   const [contractData, setContractData] = useState<ContractData | null>(null);
-  const contractRef = useRef<HTMLDivElement>(null);
 
   const handleCalculate = useCallback(async (data: FareInput): Promise<boolean> => {
     if (isNaN(data.distance) || isNaN(data.duration) || isNaN(data.pickup) || isNaN(data.wait)) {
@@ -64,13 +64,29 @@ function App() {
     showToast("Profile saved successfully!", "success");
   }, [saveProfile, showToast]);
 
-  const handleGenerateContract = useCallback((data: ContractData) => {
-    setContractData(data);
-  }, []);
+  const handleGenerateContract = useCallback(async (data: ContractData) => {
+    const newContract: ContractRecord = {
+        ...data,
+        timestamp: Date.now()
+    };
+    try {
+        await saveContract(newContract);
+        setContractData(data); // Show preview after saving
+        showToast("Contract saved successfully!", "success");
+    } catch (err) {
+        console.error(err);
+        showToast("Failed to save contract.", "error");
+    }
+  }, [saveContract, showToast]);
   
-  const handleDownloadPdf = useCallback(async () => {
-    if (contractRef.current && contractData) {
-        await generatePdf(contractRef.current, `RideContract-${contractData.customerName.replace(/\s/g, '_')}`);
+  const handleClearContractHistory = useCallback(async () => {
+    await clearContracts();
+    showToast("Contract history cleared.", "success");
+  }, [clearContracts, showToast]);
+
+  const handleDownloadPdf = useCallback(() => {
+    if (contractData) {
+        generatePdf(contractData);
     }
   }, [contractData]);
 
@@ -81,6 +97,7 @@ function App() {
         <FareForm onCalculate={handleCalculate} />
         <ResultDisplay fare={calculatedFare} />
         <HistoryList history={history} onClear={handleClearHistory} />
+        <ContractHistoryList contractHistory={contractHistory} onClear={handleClearContractHistory} onView={(contract) => setContractData(contract)} />
         <Profile initialProfile={profile} onSave={handleSaveProfile} />
         <ContractForm riderProfile={profile} onGenerate={handleGenerateContract} showToast={showToast} />
       </main>
@@ -90,7 +107,6 @@ function App() {
             contractData={contractData} 
             onDownload={handleDownloadPdf}
             onClose={() => setContractData(null)}
-            contractRef={contractRef}
         />
       )}
     </div>
