@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Copy of Fare Calc Pro",
+  "description": "An aesthetically pleasing and functional fare calculator web application built with React and Tailwind CSS. It allows users to calculate taxi fares, view their calculation history, and toggle between light and dark themes.",
+  "requestFramePermissions": []
+}
