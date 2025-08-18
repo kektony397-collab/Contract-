@@ -1,19 +1,19 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Header } from './components/Header';
-import { FareForm } from './components/FareForm';
-import { ResultDisplay } from './components/ResultDisplay';
-import { HistoryList } from './components/HistoryList';
-import { Toast } from './components/Toast';
-import { Profile } from './components/Profile';
-import { ContractForm } from './components/ContractForm';
-import { ContractPreview } from './components/ContractPreview';
-import { useTheme } from './hooks/useTheme';
-import { useIndexedDB } from './hooks/useIndexedDB';
-import { useToast } from './hooks/useToast';
-import { useProfile } from './hooks/useProfile';
-import { calculateFare } from './services/fareCalculator';
-import { generatePdf } from './services/pdfGenerator';
-import { FareInput, FareRecord, ProfileData, ContractData } from './types';
+import { Header } from './Header';
+import { FareForm } from './FareForm';
+import { ResultDisplay } from './ResultDisplay';
+import { HistoryList } from './HistoryList';
+import { Toast } from './Toast';
+import { Profile } from './Profile';
+import { ContractForm } from './ContractForm';
+import { ContractPreview } from './ContractPreview';
+import { useTheme } from '../hooks/useTheme';
+import { useIndexedDB } from '../hooks/useIndexedDB';
+import { useToast } from '../hooks/useToast';
+import { useProfile } from '../hooks/useProfile';
+import { calculateFare } from '../services/fareCalculator';
+import { generatePdf } from '../services/pdfGenerator';
+import { FareInput, FareRecord, ProfileData, ContractData } from '../types';
 
 function App() {
   const [theme, toggleTheme] = useTheme();
