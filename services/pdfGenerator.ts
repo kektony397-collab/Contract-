@@ -7,6 +7,10 @@ declare global {
 
 import { ContractData } from '../types';
 
+// Base64 encoded NotoSansDevanagari-Regular.ttf font file
+// This is necessary to support Hindi characters in the generated PDF.
+const noto_sans_devanagari_regular_base64 = `AAEAAAARAQAABAAQRFNJRwAAAAAAA...`; // This would be a very long string
+
 export const generatePdf = (contractData: ContractData): void => {
     if (typeof window.jspdf === 'undefined') {
         console.error("PDF generation library (jspdf) not loaded.");
@@ -19,6 +23,16 @@ export const generatePdf = (contractData: ContractData): void => {
         unit: 'mm',
         format: 'a4'
     });
+
+    // --- Embed Font for Hindi Support ---
+    // This font file is large, but required for Devanagari script rendering.
+    if (noto_sans_devanagari_regular_base64.length > 100) { // Simple check if the placeholder was replaced
+        doc.addFileToVFS("NotoSansDevanagari-Regular.ttf", noto_sans_devanagari_regular_base64);
+        doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari", "normal");
+        doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari", "italic");
+    } else {
+        console.warn("Hindi font not available. Hindi text may not render correctly.");
+    }
 
     const PAGE_WIDTH = doc.internal.pageSize.getWidth();
     const MARGIN = 15;
@@ -50,8 +64,8 @@ export const generatePdf = (contractData: ContractData): void => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
         doc.setTextColor(COLOR_WHITE);
-        doc.text('RIDE SHARE AGREEMENT', PAGE_WIDTH / 2, 17, { align: 'center' });
-        y = 38;
+        doc.text('Ride Contract', PAGE_WIDTH / 2, 17, { align: 'center' });
+        y = 35; // Adjusted for subtitle
     };
     
     const addFooter = () => {
@@ -64,12 +78,19 @@ export const generatePdf = (contractData: ContractData): void => {
         doc.text(`CONFIDENTIAL DOCUMENT`, MARGIN, doc.internal.pageSize.getHeight() - 8);
     };
 
-    const drawSectionTitle = (title: string) => {
+    const drawSectionTitle = (title: string, hindiTitle: string) => {
         checkPageBreak(12);
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(COLOR_PRIMARY_DARK);
         doc.text(title, MARGIN, y);
+        
+        const titleWidth = doc.getStringUnitWidth(title) * 14 / doc.internal.scaleFactor;
+        doc.setFont('NotoSansDevanagari', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(COLOR_TEXT_LIGHT);
+        doc.text(`(${hindiTitle})`, MARGIN + titleWidth + 2, y);
+
         y += 4;
         doc.setLineWidth(0.5);
         doc.line(MARGIN, y, MARGIN + 25, y);
@@ -80,7 +101,15 @@ export const generatePdf = (contractData: ContractData): void => {
 
     addHeader();
 
+    doc.setFont('NotoSansDevanagari', 'normal');
+    doc.setFontSize(12);
+    doc.setTextColor(COLOR_TEXT_LIGHT);
+    doc.text('अनुबंध की सवारी', PAGE_WIDTH / 2, y, { align: 'center' });
+    y += 10;
+
+
     // Parties Section
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(COLOR_TEXT_DARK);
     const intro = `This Ride Share Agreement ("Agreement") is entered into as of ${new Date().toLocaleDateString('en-GB')}, by and between:`;
@@ -88,10 +117,10 @@ export const generatePdf = (contractData: ContractData): void => {
     y += 12;
 
     const boxWidth = CONTENT_WIDTH / 2 - 5;
-    const boxHeight = 40;
+    const boxHeight = 70; // Increased height to fit all IDs
     doc.setFillColor(COLOR_GREY_LIGHT);
     doc.roundedRect(MARGIN, y, boxWidth, boxHeight, 3, 3, 'F');
-    doc.roundedRect(MARGIN + boxWidth + 10, y, boxWidth, boxHeight, 3, 3, 'F');
+    doc.roundedRect(MARGIN + boxWidth + 10, y, boxWidth, 40, 3, 3, 'F');
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -102,13 +131,29 @@ export const generatePdf = (contractData: ContractData): void => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(COLOR_TEXT_DARK);
-    doc.text(`Name: ${contractData.riderProfile.name || 'N/A'}`, MARGIN + 5, y + 18);
-    doc.text(`License No: ${contractData.riderProfile.licenseNumber || 'N/A'}`, MARGIN + 5, y + 25);
+    
+    // Rider Details
+    let riderY = y + 18;
+    const riderDetails = [
+        { label: 'Name', value: contractData.riderProfile.name },
+        { label: 'License No', value: contractData.riderProfile.licenseNumber },
+        { label: 'Rapido ID', value: contractData.riderProfile.rapidoId },
+        { label: 'Uber ID', value: contractData.riderProfile.uberId },
+        { label: 'Ola ID', value: contractData.riderProfile.olaId },
+    ];
+    riderDetails.forEach(detail => {
+        if (detail.value) {
+            doc.text(`${detail.label}: ${detail.value}`, MARGIN + 5, riderY);
+            riderY += 7;
+        }
+    });
+
     doc.text(`Name: ${contractData.customerName || 'N/A'}`, MARGIN + boxWidth + 15, y + 18);
     y += boxHeight + 15;
 
     // Agreement Details
-    drawSectionTitle('1. Service & Term Details');
+    drawSectionTitle('1. Service & Term Details', '१. सेवा और अवधि विवरण');
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     const serviceText = `The Rider agrees to provide daily transportation for the Customer from ${contractData.pickupLocation} to ${contractData.dropLocation}.`;
     doc.text(splitText(serviceText, CONTENT_WIDTH), MARGIN, y);
@@ -126,7 +171,7 @@ export const generatePdf = (contractData: ContractData): void => {
     y += 12;
 
     // Compensation
-    drawSectionTitle('2. Compensation');
+    drawSectionTitle('2. Compensation', '२. मुआवज़ा');
     doc.setFillColor(COLOR_GREY_LIGHT);
     doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 20, 3, 3, 'F');
     doc.setFontSize(11);
@@ -138,7 +183,7 @@ export const generatePdf = (contractData: ContractData): void => {
     y += 20 + 12;
 
     // Terms and Conditions
-    drawSectionTitle('3. Terms and Conditions');
+    drawSectionTitle('3. Terms and Conditions', '३. नियम और शर्तें');
     const terms = [
       { en: "1. Service Availability: The ride may be cancelled if the Rider's vehicle is non-operational due to mechanical breakdown or scheduled maintenance. The Rider shall provide advance notice where possible.", hi: "१. सेवा उपलब्धता: राइडर का वाहन यांत्रिक खराबी या निर्धारित रखरखाव के कारण चालू न होने की स्थिति में राइड रद्द की जा सकती है। राइडर जहां संभव हो, अग्रिम सूचना प्रदान करेगा।" },
       { en: "2. Professional Conduct: The Rider shall maintain a professional and respectful demeanor toward the Customer at all times.", hi: "२. पेशेवर आचरण: राइडर हर समय ग्राहक के प्रति एक पेशेवर और सम्मानजनक व्यवहार बनाए रखेगा।" },
@@ -156,31 +201,30 @@ export const generatePdf = (contractData: ContractData): void => {
         doc.text(enLines, MARGIN, y);
         y += enLines.length * 3.5;
 
-        doc.setFont('helvetica', 'italic');
+        doc.setFont('NotoSansDevanagari', 'italic');
         doc.setTextColor(COLOR_TEXT_LIGHT);
         doc.text(hiLines, MARGIN, y);
         y += hiLines.length * 3.5 + 4;
     });
 
     // Signatures
-    const signatureY = doc.internal.pageSize.getHeight() - 50;
-    if (y > signatureY) { // Add new page if not enough space for signatures
+    let signatureY = doc.internal.pageSize.getHeight() - 50;
+    if (y > signatureY - 20) { // Add new page if not enough space for signatures
         addFooter();
         doc.addPage();
         y = MARGIN;
         addHeader();
-        y = signatureY;
-    } else {
-        y = signatureY;
     }
+    y = signatureY;
+
 
     const signatureBlockWidth = 80;
     doc.setLineWidth(0.3);
     doc.line(MARGIN, y, MARGIN + signatureBlockWidth, y);
     doc.line(PAGE_WIDTH - MARGIN - signatureBlockWidth, y, PAGE_WIDTH - MARGIN, y);
     y += 5;
-    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
     doc.setTextColor(COLOR_TEXT_DARK);
     doc.text("Rider's Signature", MARGIN, y);
     doc.text("Customer's Signature", PAGE_WIDTH - MARGIN, y, { align: 'right' });
@@ -199,3 +243,8 @@ export const generatePdf = (contractData: ContractData): void => {
 
     doc.save(`RideAgreement_${contractData.customerName.replace(/\s/g, '_')}.pdf`);
 };
+// NOTE: The base64 font string is a placeholder for brevity. A real implementation would include the full, very long string.
+// A full version can be generated from a .ttf file using an online converter.
+// For example, from NotoSansDevanagari-Regular.ttf.
+// The placeholder below is to indicate where the long string would go.
+const placeholder_base64 = 'AAEAAAARAQAABAAQRFNJRwAAAAAAA...';

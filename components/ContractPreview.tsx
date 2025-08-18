@@ -73,20 +73,16 @@ export const ContractPreview: React.FC<ContractPreviewProps> = ({ contractData, 
              <h3 className="text-xl font-semibold border-b-2 border-[--primary] pb-2 mb-4">Terms and Conditions (नियम और शर्तें)</h3>
              <div className="space-y-4 text-sm text-[--on-surface-variant]">
                 <div>
-                    <p className="font-medium text-[--on-surface]">1. If the rider's bike breaks down, the ride can be cancelled.</p>
-                    <p>१. यदि राइडर की बाइक खराब हो जाती है, तो राइड रद्द की जा सकती है।</p>
+                    <p className="font-medium text-[--on-surface]">1. Service Availability: The ride may be cancelled if the Rider's vehicle is non-operational due to mechanical breakdown or scheduled maintenance. The Rider shall provide advance notice where possible.</p>
+                    <p>१. सेवा उपलब्धता: राइडर का वाहन यांत्रिक खराबी या निर्धारित रखरखाव के कारण चालू न होने की स्थिति में राइड रद्द की जा सकती है। राइडर जहां संभव हो, अग्रिम सूचना प्रदान करेगा।</p>
                 </div>
                 <div>
-                    <p className="font-medium text-[--on-surface]">2. If the bike has gone for maintenance then also the ride can be cancelled.</p>
-                    <p>२. यदि बाइक रखरखाव के लिए गई है, तो भी राइड रद्द की जा सकती है।</p>
+                    <p className="font-medium text-[--on-surface]">2. Professional Conduct: The Rider shall maintain a professional and respectful demeanor toward the Customer at all times.</p>
+                    <p>२. पेशेवर आचरण: राइडर हर समय ग्राहक के प्रति एक पेशेवर और सम्मानजनक व्यवहार बनाए रखेga।</p>
                 </div>
                 <div>
-                    <p className="font-medium text-[--on-surface]">3. The rider cannot behave badly with the customer.</p>
-                    <p>३. राइडर ग्राहक के साथ बुरा व्यवहार नहीं कर सकता।</p>
-                </div>
-                <div>
-                    <p className="font-medium text-[--on-surface]">4. If the customer wants, they can cancel the contract after 10 days, the rider will have to return the payment accordingly.</p>
-                    <p>४. यदि ग्राहक चाहे, तो वह 10 दिनों के बाद अनुबंध रद्द कर सकता है, राइडर को तदनुसार भुगतान वापस करना होगा।</p>
+                    <p className="font-medium text-[--on-surface]">3. Customer Termination Clause: The Customer may terminate this Agreement after an initial period of ten (10) days. Upon such termination, the Rider shall refund the pro-rated amount for the remainder of the contract term.</p>
+                    <p>३. अनुबंध समाप्ति का प्रावधान: ग्राहक दस (10) दिनों की प्रारंभिक अवधि के बाद इस अनुबंध को समाप्त कर सकता है। ऐसी समाप्ति पर, राइडर अनुबंध की शेष अवधि के लिए आनुपातिक राशि वापस करेगा।</p>
                 </div>
              </div>
           </section>
