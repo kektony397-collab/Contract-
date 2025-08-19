@@ -89,16 +89,19 @@ export const useIndexedDB = () => {
     });
   }, [db, loadHistory]);
 
-  const saveContract = useCallback(async (contractData: ContractRecord) => {
-    if (!db) return;
+  const saveContract = useCallback(async (contractData: ContractRecord): Promise<ContractRecord> => {
+    if (!db) {
+      return Promise.reject(new Error("Database not available."));
+    }
     const transaction = db.transaction(CONTRACT_STORE_NAME, 'readwrite');
     const store = transaction.objectStore(CONTRACT_STORE_NAME);
     const request = store.add(contractData);
     
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<ContractRecord>((resolve, reject) => {
         request.onsuccess = () => {
+            const savedRecord: ContractRecord = { ...contractData, id: request.result as number };
             loadContracts();
-            resolve();
+            resolve(savedRecord);
         };
         request.onerror = () => {
             console.error("Error saving contract:", request.error);

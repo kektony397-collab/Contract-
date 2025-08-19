@@ -1,3 +1,4 @@
+
 // To inform TypeScript about the global variables from the CDN scripts
 declare global {
   interface Window {
@@ -5,13 +6,9 @@ declare global {
   }
 }
 
-import { ContractData } from '../types';
+import { ContractRecord } from '../types';
 
-// Base64 encoded NotoSansDevanagari-Regular.ttf font file
-// This is necessary to support Hindi characters in the generated PDF.
-const noto_sans_devanagari_regular_base64 = `AAEAAAARAQAABAAQRFNJRwAAAAAAA...`; // This would be a very long string
-
-export const generatePdf = (contractData: ContractData): void => {
+export const generatePdf = (contractData: ContractRecord): void => {
     if (typeof window.jspdf === 'undefined') {
         console.error("PDF generation library (jspdf) not loaded.");
         return;
@@ -24,227 +21,206 @@ export const generatePdf = (contractData: ContractData): void => {
         format: 'a4'
     });
 
-    // --- Embed Font for Hindi Support ---
-    // This font file is large, but required for Devanagari script rendering.
-    if (noto_sans_devanagari_regular_base64.length > 100) { // Simple check if the placeholder was replaced
-        doc.addFileToVFS("NotoSansDevanagari-Regular.ttf", noto_sans_devanagari_regular_base64);
-        doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari", "normal");
-        doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari", "italic");
-    } else {
-        console.warn("Hindi font not available. Hindi text may not render correctly.");
-    }
-
+    // --- Document Constants & Styling ---
     const PAGE_WIDTH = doc.internal.pageSize.getWidth();
-    const MARGIN = 15;
+    const MARGIN = 20;
     const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-    let y = 0;
+    let y = MARGIN;
 
-    // --- Colors & Fonts ---
-    const COLOR_PRIMARY_DARK = '#2c3e50'; // Very dark blue
-    const COLOR_GREY_LIGHT = '#ecf0f1'; // Light grey for boxes
-    const COLOR_TEXT_DARK = '#34495e'; // Dark grey text
-    const COLOR_TEXT_LIGHT = '#7f8c8d'; // Lighter grey text
-    const COLOR_WHITE = '#ffffff';
+    // Corporate Color Palette
+    const COLOR_PRIMARY = '#0D47A1'; // Deep Blue
+    const COLOR_TEXT = '#212121'; // Almost Black
+    const COLOR_TEXT_LIGHT = '#757575'; // Medium Grey
 
     // --- Helper Functions ---
-    const splitText = (text: string, maxWidth: number) => doc.splitTextToSize(text, maxWidth);
-
     const checkPageBreak = (heightNeeded: number) => {
         if (y + heightNeeded > doc.internal.pageSize.getHeight() - MARGIN) {
             addFooter();
             doc.addPage();
             y = MARGIN;
-            addHeader(); // Re-add header on new page
         }
     };
-    
-    const addHeader = () => {
-        doc.setFillColor(COLOR_PRIMARY_DARK);
-        doc.rect(0, 0, PAGE_WIDTH, 28, 'F');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(20);
-        doc.setTextColor(COLOR_WHITE);
-        doc.text('Ride Contract', PAGE_WIDTH / 2, 17, { align: 'center' });
-        y = 35; // Adjusted for subtitle
-    };
-    
+
     const addFooter = () => {
-        const pageCount = doc.internal.getNumberOfPages();
+        const pageNum = doc.internal.getNumberOfPages();
         doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
         doc.setTextColor(COLOR_TEXT_LIGHT);
-        doc.setLineWidth(0.2);
+        doc.text(
+            `Page ${pageNum}`, 
+            PAGE_WIDTH - MARGIN, 
+            doc.internal.pageSize.getHeight() - 10, 
+            { align: 'right' }
+        );
+        doc.text(
+            `Private Hire Agreement | ${contractData.customerName}`,
+            MARGIN,
+            doc.internal.pageSize.getHeight() - 10
+        );
+        doc.setLineWidth(0.1);
         doc.line(MARGIN, doc.internal.pageSize.getHeight() - 12, PAGE_WIDTH - MARGIN, doc.internal.pageSize.getHeight() - 12);
-        doc.text(`Page ${pageCount}`, PAGE_WIDTH - MARGIN, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
-        doc.text(`CONFIDENTIAL DOCUMENT`, MARGIN, doc.internal.pageSize.getHeight() - 8);
+    };
+    
+    const drawSectionTitle = (title: string, sectionNumber: number) => {
+        checkPageBreak(15);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(COLOR_PRIMARY);
+        doc.text(`${sectionNumber}. ${title.toUpperCase()}`, MARGIN, y);
+        y += 5;
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(COLOR_PRIMARY);
+        doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+        doc.setDrawColor(0); // Reset draw color
+        y += 8;
     };
 
-    const drawSectionTitle = (title: string, hindiTitle: string) => {
-        checkPageBreak(12);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(COLOR_PRIMARY_DARK);
-        doc.text(title, MARGIN, y);
-        
-        const titleWidth = doc.getStringUnitWidth(title) * 14 / doc.internal.scaleFactor;
-        doc.setFont('NotoSansDevanagari', 'normal');
+    const addClause = (text: string) => {
+        checkPageBreak(10);
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.setTextColor(COLOR_TEXT_LIGHT);
-        doc.text(`(${hindiTitle})`, MARGIN + titleWidth + 2, y);
+        doc.setTextColor(COLOR_TEXT);
+        const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+        doc.text(lines, MARGIN, y);
+        y += (lines.length * 4) + 4;
+    };
 
-        y += 4;
-        doc.setLineWidth(0.5);
-        doc.line(MARGIN, y, MARGIN + 25, y);
-        y += 8;
+    const addSubClause = (numbering: string, text: string) => {
+        checkPageBreak(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(COLOR_TEXT);
+        const indent = 5;
+        const lines = doc.splitTextToSize(text, CONTENT_WIDTH - indent);
+        doc.text(lines, MARGIN + indent, y, { charSpace: 0.1 });
+        doc.text(numbering, MARGIN, y); // Add numbering
+        y += (lines.length * 4) + 3;
     };
 
     // --- PDF Construction ---
 
-    addHeader();
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(COLOR_PRIMARY);
+    doc.text('PRIVATE HIRE VEHICLE AGREEMENT', PAGE_WIDTH / 2, y, { align: 'center' });
+    y += 8;
 
-    doc.setFont('NotoSansDevanagari', 'normal');
-    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
     doc.setTextColor(COLOR_TEXT_LIGHT);
-    doc.text('अनुबंध की सवारी', PAGE_WIDTH / 2, y, { align: 'center' });
+    doc.text(`Ref: ${contractData.id || Date.now()}`, PAGE_WIDTH - MARGIN, y, { align: 'right' });
+    doc.text(`Dated: ${new Date().toLocaleDateString('en-GB')}`, MARGIN, y);
+    y += 10;
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
     y += 10;
 
+    // Preamble
+    addClause(`This Private Hire Vehicle Agreement (hereinafter referred to as the "Agreement") is made and entered into on this ${new Date().toLocaleDateString('en-GB')},`);
+    y += 2;
+    addClause("BY AND BETWEEN:");
+    y += 5;
 
-    // Parties Section
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(COLOR_TEXT_DARK);
-    const intro = `This Ride Share Agreement ("Agreement") is entered into as of ${new Date().toLocaleDateString('en-GB')}, by and between:`;
-    doc.text(splitText(intro, CONTENT_WIDTH), MARGIN, y);
-    y += 12;
+    // Parties
+    const riderIdDetails = [
+        contractData.riderProfile.rapidoId ? `Rapido ID: ${contractData.riderProfile.rapidoId}` : null,
+        contractData.riderProfile.uberId ? `Uber ID: ${contractData.riderProfile.uberId}` : null,
+        contractData.riderProfile.olaId ? `Ola ID: ${contractData.riderProfile.olaId}` : null
+    ].filter(Boolean).join('\n');
 
-    const boxWidth = CONTENT_WIDTH / 2 - 5;
-    const boxHeight = 70; // Increased height to fit all IDs
-    doc.setFillColor(COLOR_GREY_LIGHT);
-    doc.roundedRect(MARGIN, y, boxWidth, boxHeight, 3, 3, 'F');
-    doc.roundedRect(MARGIN + boxWidth + 10, y, boxWidth, 40, 3, 3, 'F');
-
-    doc.setFontSize(12);
+    const partyDetailsY = y;
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(COLOR_PRIMARY_DARK);
-    doc.text('The Rider', MARGIN + 5, y + 8);
-    doc.text('The Customer', MARGIN + boxWidth + 15, y + 8);
-
     doc.setFontSize(10);
+    doc.setTextColor(COLOR_TEXT);
+    doc.text('THE RIDER', MARGIN, partyDetailsY);
+    doc.text('THE CUSTOMER', MARGIN + CONTENT_WIDTH / 2 + 10, partyDetailsY);
+
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(COLOR_TEXT_DARK);
+    const riderDetailsText = `${contractData.riderProfile.name}\nLicense No: ${contractData.riderProfile.licenseNumber}\n${riderIdDetails}`;
+    const customerDetailsText = `${contractData.customerName}\nPickup: ${contractData.pickupLocation}\nDrop-off: ${contractData.dropLocation}`;
     
-    // Rider Details
-    let riderY = y + 18;
-    const riderDetails = [
-        { label: 'Name', value: contractData.riderProfile.name },
-        { label: 'License No', value: contractData.riderProfile.licenseNumber },
-        { label: 'Rapido ID', value: contractData.riderProfile.rapidoId },
-        { label: 'Uber ID', value: contractData.riderProfile.uberId },
-        { label: 'Ola ID', value: contractData.riderProfile.olaId },
-    ];
-    riderDetails.forEach(detail => {
-        if (detail.value) {
-            doc.text(`${detail.label}: ${detail.value}`, MARGIN + 5, riderY);
-            riderY += 7;
-        }
-    });
+    doc.text(doc.splitTextToSize(riderDetailsText, CONTENT_WIDTH / 2 - 5), MARGIN, partyDetailsY + 6);
+    doc.text(doc.splitTextToSize(customerDetailsText, CONTENT_WIDTH / 2 - 5), MARGIN + CONTENT_WIDTH / 2 + 10, partyDetailsY + 6);
+    y += 35;
 
-    doc.text(`Name: ${contractData.customerName || 'N/A'}`, MARGIN + boxWidth + 15, y + 18);
-    y += boxHeight + 15;
 
-    // Agreement Details
-    drawSectionTitle('1. Service & Term Details', '१. सेवा और अवधि विवरण');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const serviceText = `The Rider agrees to provide daily transportation for the Customer from ${contractData.pickupLocation} to ${contractData.dropLocation}.`;
-    doc.text(splitText(serviceText, CONTENT_WIDTH), MARGIN, y);
-    y += splitText(serviceText, CONTENT_WIDTH).length * 4 + 4;
+    addClause(`The Rider and the Customer shall hereinafter be collectively referred to as the "Parties" and individually as a "Party".`);
+    y += 5;
 
+    // Recitals (WHEREAS clauses)
     doc.setFont('helvetica', 'bold');
-    doc.text('Contract Term:', MARGIN, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${new Date(contractData.startDate).toLocaleDateString('en-GB')} to ${new Date(contractData.endDate).toLocaleDateString('en-GB')} (${contractData.numberOfDays} days)`, MARGIN + 30, y);
+    doc.text('WHEREAS:', MARGIN, y);
     y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Daily Estimate:', MARGIN, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${contractData.dailyDistance} km / ${contractData.dailyDuration} min`, MARGIN + 30, y);
-    y += 12;
-
-    // Compensation
-    drawSectionTitle('2. Compensation', '२. मुआवज़ा');
-    doc.setFillColor(COLOR_GREY_LIGHT);
-    doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 20, 3, 3, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Total compensation for the services rendered under this Agreement:', MARGIN + 5, y + 8);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`₹${contractData.totalFare.toFixed(2)}`, PAGE_WIDTH - MARGIN - 5, y + 14, { align: 'right' });
-    y += 20 + 12;
-
-    // Terms and Conditions
-    drawSectionTitle('3. Terms and Conditions', '३. नियम और शर्तें');
-    const terms = [
-      { en: "1. Service Availability: The ride may be cancelled if the Rider's vehicle is non-operational due to mechanical breakdown or scheduled maintenance. The Rider shall provide advance notice where possible.", hi: "१. सेवा उपलब्धता: राइडर का वाहन यांत्रिक खराबी या निर्धारित रखरखाव के कारण चालू न होने की स्थिति में राइड रद्द की जा सकती है। राइडर जहां संभव हो, अग्रिम सूचना प्रदान करेगा।" },
-      { en: "2. Professional Conduct: The Rider shall maintain a professional and respectful demeanor toward the Customer at all times.", hi: "२. पेशेवर आचरण: राइडर हर समय ग्राहक के प्रति एक पेशेवर और सम्मानजनक व्यवहार बनाए रखेगा।" },
-      { en: "3. Customer Termination Clause: The Customer may terminate this Agreement after an initial period of ten (10) days. Upon such termination, the Rider shall refund the pro-rated amount for the remainder of the contract term.", hi: "३. अनुबंध समाप्ति का प्रावधान: ग्राहक दस (10) दिनों की प्रारंभिक अवधि के बाद इस अनुबंध को समाप्त कर सकता है। ऐसी समाप्ति पर, राइडर अनुबंध की शेष अवधि के लिए आनुपातिक राशि वापस करेगा।" }
-    ];
-
-    doc.setFontSize(9);
-    terms.forEach(term => {
-        const enLines = splitText(term.en, CONTENT_WIDTH);
-        const hiLines = splitText(term.hi, CONTENT_WIDTH);
-        checkPageBreak((enLines.length + hiLines.length) * 3.5 + 4);
-
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(COLOR_TEXT_DARK);
-        doc.text(enLines, MARGIN, y);
-        y += enLines.length * 3.5;
-
-        doc.setFont('NotoSansDevanagari', 'italic');
-        doc.setTextColor(COLOR_TEXT_LIGHT);
-        doc.text(hiLines, MARGIN, y);
-        y += hiLines.length * 3.5 + 4;
-    });
-
-    // Signatures
-    let signatureY = doc.internal.pageSize.getHeight() - 50;
-    if (y > signatureY - 20) { // Add new page if not enough space for signatures
-        addFooter();
-        doc.addPage();
-        y = MARGIN;
-        addHeader();
-    }
-    y = signatureY;
-
-
-    const signatureBlockWidth = 80;
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, y, MARGIN + signatureBlockWidth, y);
-    doc.line(PAGE_WIDTH - MARGIN - signatureBlockWidth, y, PAGE_WIDTH - MARGIN, y);
+    addSubClause('A.', 'The Rider is engaged in the business of providing transportation services and holds all necessary permits and licenses to operate as a private hire vehicle driver.');
+    addSubClause('B.', 'The Customer desires to engage the Rider to provide transportation services for a fixed term, and the Rider has agreed to provide such services on the terms and conditions set forth in this Agreement.');
+    y += 4;
+    addClause('NOW, THEREFORE, in consideration of the mutual covenants and promises contained herein, the Parties agree as follows:');
     y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(COLOR_TEXT_DARK);
-    doc.text("Rider's Signature", MARGIN, y);
-    doc.text("Customer's Signature", PAGE_WIDTH - MARGIN, y, { align: 'right' });
-    y += 5;
-    doc.setFontSize(8);
-    doc.setTextColor(COLOR_TEXT_LIGHT);
-    doc.text(`(${contractData.riderProfile.name})`, MARGIN, y);
-    doc.text(`(${contractData.customerName})`, PAGE_WIDTH - MARGIN, y, { align: 'right' });
 
-    // Finalize pages
+    // Section 1: Scope of Services
+    drawSectionTitle('Scope of Services', 1);
+    addSubClause('1.1', `The Rider agrees to provide daily transportation services to the Customer from the designated pick-up to the drop-off location.`);
+    addSubClause('1.2', `The estimated daily travel is approximately ${contractData.dailyDistance} kilometers with an approximate duration of ${contractData.dailyDuration} minutes.`);
+
+    // Section 2: Term of Agreement
+    drawSectionTitle('Term of Agreement', 2);
+    addSubClause('2.1', `This Agreement shall commence on ${new Date(contractData.startDate).toLocaleDateString('en-GB')} and shall continue in full force and effect until ${new Date(contractData.endDate).toLocaleDateString('en-GB')} (the "Term"), unless terminated earlier in accordance with the provisions of this Agreement.`);
+    addSubClause('2.2', `The total duration of this agreement is for ${contractData.numberOfDays} days.`);
+    
+    // Section 3: Financial Consideration
+    drawSectionTitle('Financial Consideration', 3);
+    addSubClause('3.1', `In consideration for the services rendered by the Rider, the Customer shall pay a total, all-inclusive fee of INR ${contractData.totalFare.toFixed(2)} for the entire Term.`);
+    addSubClause('3.2', 'This fee is calculated based on the daily travel estimates and is fixed for the duration of the Term. No additional charges for fuel, tolls, or standard waiting times shall be applicable unless mutually agreed upon in writing.');
+    
+    // Section 4: Obligations of the Rider
+    drawSectionTitle('Obligations of the Rider', 4);
+    addSubClause('4.1', `The Rider shall ensure the vehicle used for providing the services is well-maintained, clean, insured, and compliant with all applicable laws and regulations.`);
+    addSubClause('4.2', `The Rider shall maintain a valid driving license and all other necessary permits throughout the Term.`);
+    addSubClause('4.3', `The Rider shall conduct himself in a professional, courteous, and respectful manner at all times.`);
+    addSubClause('4.4', `The Rider shall notify the Customer in a timely manner of any potential delays or inability to provide the service on a particular day due to unforeseen circumstances.`);
+
+    // Section 5: Termination
+    drawSectionTitle('Termination', 5);
+    addSubClause('5.1', `The Customer may terminate this Agreement by providing a written notice of ten (10) days to the Rider.`);
+    addSubClause('5.2', `In the event of termination by the Customer as per clause 5.1, the Rider shall refund the pro-rated amount for the unutilized portion of the Term to the Customer within seven (7) business days.`);
+    
+    // Section 6: Governing Law and Jurisdiction
+    drawSectionTitle('Governing Law and Jurisdiction', 6);
+    addSubClause('6.1', `This Agreement shall be governed by and construed in accordance with the laws of India, including the Indian Contract Act, 1872.`);
+    addSubClause('6.2', `Any dispute arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the competent courts.`);
+    
+    // Section 7: Entire Agreement
+    drawSectionTitle('Entire Agreement', 7);
+    addSubClause('7.1', `This Agreement constitutes the entire agreement between the Parties and supersedes all prior oral or written agreements, understandings, or arrangements.`);
+
+    // Signature Block
+    y += 15;
+    checkPageBreak(60);
+    addClause('IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.');
+    
+    y += 20;
+
+    const signatureBlockWidth = CONTENT_WIDTH / 2 - 10;
+    const sigLineY = y + 20;
+
+    // Rider Signature
+    doc.line(MARGIN, sigLineY, MARGIN + signatureBlockWidth, sigLineY);
+    doc.text("For the Rider", MARGIN, sigLineY + 5);
+    doc.text(`Name: ${contractData.riderProfile.name}`, MARGIN, sigLineY + 10);
+    
+    // Customer Signature
+    const customerSigX = PAGE_WIDTH - MARGIN - signatureBlockWidth;
+    doc.line(customerSigX, sigLineY, customerSigX + signatureBlockWidth, sigLineY);
+    doc.text("For the Customer", customerSigX, sigLineY + 5);
+    doc.text(`Name: ${contractData.customerName}`, customerSigX, sigLineY + 10);
+
+    // Finalize pages by adding footers
     const pageCount = doc.internal.getNumberOfPages();
     for(let i = 1; i <= pageCount; i++){
         doc.setPage(i);
         addFooter();
     }
-
+    
     doc.save(`RideAgreement_${contractData.customerName.replace(/\s/g, '_')}.pdf`);
 };
-// NOTE: The base64 font string is a placeholder for brevity. A real implementation would include the full, very long string.
-// A full version can be generated from a .ttf file using an online converter.
-// For example, from NotoSansDevanagari-Regular.ttf.
-// The placeholder below is to indicate where the long string would go.
-const placeholder_base64 = 'AAEAAAARAQAABAAQRFNJRwAAAAAAA...';

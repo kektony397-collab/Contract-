@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Header } from './Header';
 import { FareForm } from './FareForm';
@@ -22,7 +23,7 @@ function App() {
   const { toast, showToast } = useToast();
   const [calculatedFare, setCalculatedFare] = useState<number | null>(null);
   const [profile, saveProfile] = useProfile();
-  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [contractData, setContractData] = useState<ContractRecord | null>(null);
 
   const handleCalculate = useCallback(async (data: FareInput): Promise<boolean> => {
     if (isNaN(data.distance) || isNaN(data.duration) || isNaN(data.pickup) || isNaN(data.wait)) {
@@ -70,8 +71,8 @@ function App() {
         timestamp: Date.now()
     };
     try {
-        await saveContract(newContract);
-        setContractData(data); // Show preview after saving
+        const savedContract = await saveContract(newContract);
+        setContractData(savedContract); // Show preview after saving
         showToast("Contract saved successfully!", "success");
     } catch (err) {
         console.error(err);
